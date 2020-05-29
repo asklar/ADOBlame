@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace ADOCLI
 {
-    internal class ChangeBlameController
+    internal partial class ChangeBlameController
     {
         internal abstract class ChangeBlameQuery
         {
@@ -28,107 +28,9 @@ namespace ADOCLI
             public abstract bool Matches(string strValue);
         }
 
-        private class ChangeBlameTagQuery : ChangeBlameQuery
-        {
-            public string Tag
-            {
-                get;
-                set;
-            }
-
-            public override string GetFieldName()
-            {
-                return "System.Tags";
-            }
-
-            public override string ToString()
-            {
-                return "Tags: " + Tag;
-            }
-
-            public override string GetOperator()
-            {
-                return "CONTAINS";
-            }
-
-            public override bool Matches(string strValue)
-            {
-                return strValue.Contains(Tag, StringComparison.OrdinalIgnoreCase);
-            }
-
-            public override string GetValue()
-            {
-                return Tag;
-            }
-        }
-
-        private class ChangeBlameFieldQuery : ChangeBlameQuery
-        {
-            public string Field
-            {
-                get;
-                set;
-            }
-
-            public string Value
-            {
-                get;
-                set;
-            }
-
-            public override string ToString()
-            {
-                return Field + "=" + Value;
-            }
-
-            public override string GetFieldName()
-            {
-                if (Field.Contains(' '))
-                {
-                    return "System." + Field.Replace(" ", "");
-                }
-                return Field;
-            }
-
-            public override string GetOperator()
-            {
-                return "=";
-            }
-
-            public override bool Matches(string strValue)
-            {
-                return string.Equals(strValue, Value, StringComparison.OrdinalIgnoreCase);
-            }
-
-            public override string GetValue()
-            {
-                return Value;
-            }
-        }
-
-        internal class ChangeInfo
-        {
-            public string Author
-            {
-                get;
-                set;
-            }
-
-            public DateTime ChangedDate
-            {
-                get;
-                set;
-            }
-
-            public override string ToString()
-            {
-                return $"{Author}\t{ChangedDate.ToLocalTime()}";
-            }
-        }
-
         private readonly ChangeBlameQuery query;
 
-        private int id = -1;
+        public int Id { get; set; } = -1;
 
         public ChangeBlameController(string queryString)
         {
@@ -168,7 +70,7 @@ namespace ADOCLI
 
         private async Task<Dictionary<int, ChangeInfo>> GetItems()
         {
-            string filter = (id != -1) ? $"[System.Id] = '{id}'" : query.GetQuery();
+            string filter = (Id != -1) ? $"[System.Id] = '{Id}'" : query.GetQuery();
             Wiql wiql = new Wiql
             {
                 Query = "SELECT [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [System.Tags] FROM workitems WHERE [System.WorkItemType] = 'Bug' AND " + filter
@@ -186,7 +88,10 @@ namespace ADOCLI
                             "System.Id",
                             "System.Title"
                         };
-                        Console.WriteLine($"Found {workItemQueryResult.WorkItems.Count()} items");
+                        if (AdoConfiguration.Instance.Debug)
+                        {
+                            Console.WriteLine($"Found {workItemQueryResult.WorkItems.Count()} items");
+                        }
                         for (int i = 0; i < workItemQueryResult.WorkItems.Count(); i += 50)
                         {
                             IEnumerable<WorkItemReference> setOfIds = workItemQueryResult.WorkItems.Skip(i).Take(50);
@@ -207,11 +112,17 @@ namespace ADOCLI
                                             hasValue = true;
                                             lastUserToUpdate = update.RevisedBy.DisplayName;
                                             lastChange = update.RevisedDate;
-                                            Console.WriteLine($"Bug {workItem.Id.Value}: {query.ToString()} set by {lastUserToUpdate} on {lastChange.ToLocalTime()}");
+                                            if (AdoConfiguration.Instance.ShowDetails)
+                                            {
+                                                Console.WriteLine($"Bug {workItem.Id.Value}: {query.ToString()} set by {lastUserToUpdate} on {lastChange.ToLocalTime()}");
+                                            }
                                         }
                                         else if (hasValue && !query.Matches(strValue))
                                         {
-                                            Console.WriteLine($"Bug {workItem.Id.Value}: {query.ToString()} reset by {update.RevisedBy.DisplayName} on {update.RevisedDate.ToLocalTime().ToString()} - new Value = {strValue}");
+                                            if (AdoConfiguration.Instance.ShowDetails)
+                                            {
+                                                Console.WriteLine($"Bug {workItem.Id.Value}: {query.ToString()} reset by {update.RevisedBy.DisplayName} on {update.RevisedDate.ToLocalTime().ToString()} - new Value = {strValue}");
+                                            }
                                             lastChange = DateTime.Now;
                                             hasValue = false;
                                         }
@@ -244,7 +155,10 @@ namespace ADOCLI
 
         public void Process()
         {
-            Console.WriteLine("Fetching blame for query " + query.ToString());
+            if (AdoConfiguration.Instance.Debug)
+            {
+                Console.WriteLine("Fetching blame for query " + query.ToString());
+            }
             Dictionary<int, ChangeInfo> items = GetItems().Result;
             items.ForEach(c => Console.WriteLine($"{c.Key}\t{c.Value}"));
 
@@ -269,11 +183,6 @@ namespace ADOCLI
                     Console.WriteLine($"{author} : {summary[author]}");
                 }
             }
-        }
-
-        internal void SetBugId(int id)
-        {
-            this.id = id;
         }
     }
 }

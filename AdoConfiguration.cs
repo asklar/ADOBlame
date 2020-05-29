@@ -48,6 +48,9 @@ namespace ADOCLI
             }
         }
 
+        public bool Debug { get; internal set; }
+        public bool ShowDetails { get; internal set; }
+
         internal static T GetClient<T>() where T : VssHttpClientBase
         {
             return new VssConnection(new Uri(Instance.Uri), Instance.Credentials).GetClient<T>();

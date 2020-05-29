@@ -35,6 +35,10 @@ namespace ADOCLI
                         case "/id":
                             id = int.Parse(args[i + 1]);
                             break;
+                        case "/debug":
+                            AdoConfiguration.Instance.Debug = true;
+                            i--; // don't advance 2, only 1.
+                            break;
                     }
                 }
             }
@@ -45,7 +49,7 @@ namespace ADOCLI
             ChangeBlameController controller = new ChangeBlameController(tag);
             if (id != -1)
             {
-                controller.SetBugId(id);
+                controller.Id = id;
             }
             controller.Process();
         }
