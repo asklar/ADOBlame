@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ADOBlame": {
+      "commandName": "Project",
+      "commandLineArgs": "/id 16458405 /tag Eco2FT"
+    }
+  }
+}
